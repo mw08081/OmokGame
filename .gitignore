@@ -1,0 +1,7 @@
+*.obj
+*.pdb
+*.recipe
+*.tlog
+*.lastbuildstate
+*.log
+*.idb

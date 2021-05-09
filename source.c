@@ -1,8 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <conio.h>
 #include <Windows.h>
 
 #include "renJu.h"
+//4.16.~ omg
+//5.3.∫Œ≈Õ
 
 #define UP 72
 #define DOWN 80
@@ -11,75 +15,87 @@
 #define SPACE 32
 #define ENTER 13
 
+typedef struct PointArr {
+	int x;
+	int y;
+}pointArr;
+
 void gotoXY_g(int x, int y);
-void gotoXY(int * x, int * y, int gameMod);
+void gotoXY(int* x, int* y, int gameMod);
 
 void drawMenu();
 void drawBoard();
-void resetSetting(int board[][15], int * grid_x, int * grid_y, int * gameMod, int * turn);
-void setGameSetting(int* grid_x, int* grid_y, int* gameMod);
+void resetSetting(int* gridX, int* gridY, int* gameMod, int* turn);
+void setGameSetting(int* gridX, int* gridY, int* gameMod);
 void EXITGAME();
 
-void putRock(int board[][15], int grid_x, int grid_y, int * turn);
-int checkRes(int board[][15], int grid_x, int grid_y);
+void putRock(int gridX, int gridY, int* turn);
+int checkRes(int gridX, int gridY);
 void printRes(int res);
+
+void putRockAI(int gridX, int gridY);
+void playAI(int gridX, int gridY);
+
+int board[15][15] = { 0 };
+int weightBoardBlack[15][15] = { 0 };
+int weightBoardWhite[15][15] = { 0 };
 
 int main()
 {
-	int grid_x = 0, grid_y = 2, gameMod = 0;
+	int gridX = 0, gridY = 2, gameMod = 0;
 
 	int kb = 0, turn = 1;
-	int board[15][15] = { 0 };
 
-	resetSetting(board, &grid_x, &grid_y, &gameMod, &turn);
-	
+	resetSetting(&gridX, &gridY, &gameMod, &turn);
+
 	while (1) {
-		if (_kbhit()) { 
+		if (_kbhit()) {
 			kb = _getch();
 			if (kb == 224)
 			{
 				kb = _getch();
-				switch(kb) {
-				case UP :
-					grid_y -= 1;
-					gotoXY(&grid_x, &grid_y,gameMod);
+				switch (kb) {
+				case UP:
+					gridY -= 1;
+					gotoXY(&gridX, &gridY, gameMod);
 					break;
 				case DOWN:
-					grid_y += 1;
-					gotoXY(&grid_x, &grid_y, gameMod);
+					gridY += 1;
+					gotoXY(&gridX, &gridY, gameMod);
 					break;
 				case LEFT:
-					grid_x -= 3;
-					gotoXY(&grid_x, &grid_y, gameMod);
+					gridX -= 3;
+					gotoXY(&gridX, &gridY, gameMod);
 					break;
 				case RIGHT:
-					grid_x += 3;
-					gotoXY(&grid_x, &grid_y, gameMod);
+					gridX += 3;
+					gotoXY(&gridX, &gridY, gameMod);
 					break;
 				}
 			}
-			else if(kb == SPACE) {
-				if (gameMod == 0 && grid_y == 2) {
-					gameMod = 1;
-				}
-				else if (gameMod == 0 && grid_y == 4) {
-					gameMod = 1;
+			else if (kb == SPACE) {
+				if (gameMod == 0 && (gridY == 2 || gridY == 4)) {
 
-					setGameSetting(&grid_x, &grid_y, &gameMod);
-					drawBoard();
-					gotoXY(&grid_x, &grid_y, gameMod);
 				}
-				else if (gameMod == 1) 
-				{
-					if (board[grid_y][grid_x / 3] != 0) { continue; }
+				else if (gameMod == 1) {
+					if (board[gridY][gridX / 3] == 3 || board[gridY][gridX / 3] == 2) { continue; }
 
-					putRock(board, grid_x, grid_y, &turn);
-					
-					if (1 == checkRes(board, grid_x, grid_y) || 32 == checkRes(board, grid_x, grid_y)) {	
-						resetSetting(board, &grid_x, &grid_y, &gameMod, &turn);
+					putRockAI(gridX, gridY, &turn);
+
+					if (243 == checkRes(gridX, gridY) || 32 == checkRes(gridX, gridY)) {
+						resetSetting(&gridX, &gridY, &gameMod, &turn);
 					}
 				}
-				else if (grid_y == 6) {
+				else if (gameMod == 2) {
+					if (board[gridY][gridX / 3] != 0) { continue; }
+
+					putRock(gridX, gridY, &turn);
+
+					if (243 == checkRes(gridX, gridY) || 32 == checkRes(gridX, gridY)) {
+						resetSetting(&gridX, &gridY, &gameMod, &turn);
+					}
+				}
+				else if (gridY == 6) {
 					EXITGAME();
 					return 0;
 				}
@@ -96,16 +112,16 @@ void gotoXY_g(int x, int y)
 
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), Pos);
 }
-void gotoXY(int * x, int * y, int gameMod)
+void gotoXY(int* x, int* y, int gameMod)
 {
 	if (gameMod == 0 && (*y <= 0 || *y >= 8))
 	{
-		if (*y <= 0) {	(*y) += 2;	}
-		else {	(*y) -= 2;	}
+		if (*y <= 0) { (*y) += 2; }
+		else { (*y) -= 2; }
 
 	}
 	else if (gameMod == 0 && *x != 0) { *x = 0; }
-	else if (gameMod == 1)
+	else if (gameMod == 1 || gameMod == 2)
 	{
 		if (*x <= 0) { *x = 0; }
 		else if (*x >= 45) { *x -= 3; }
@@ -125,6 +141,7 @@ void drawMenu()
 	printf("2. 2P Player\n\n");
 	printf("3. EXIT");
 }
+
 void drawBoard()
 {
 	int a, b;
@@ -167,10 +184,10 @@ void drawBoard()
 		printf("\n");
 	}
 }
-void resetSetting(int board[][15], int* grid_x, int* grid_y, int* gameMod, int* turn) 
+void resetSetting(int* gridX, int* gridY, int* gameMod, int* turn)
 {
-	*grid_x = 0;
-	*grid_y = 2;
+	*gridX = 0;
+	*gridY = 2;
 	*gameMod = 0;
 	*turn = 1;
 
@@ -181,16 +198,21 @@ void resetSetting(int board[][15], int* grid_x, int* grid_y, int* gameMod, int* 
 	}
 
 	system("cls");
-	gotoXY(grid_x, grid_y, gameMod);
+	gotoXY(gridX, gridY, gameMod);
 	drawMenu();
-	gotoXY(grid_x, grid_y, gameMod);
+	gotoXY(gridX, gridY, gameMod);
 }
-void setGameSetting(int* grid_x, int* grid_y, int* gameMod)
+void setGameSetting(int* gridX, int* gridY, int* gameMod)
 {
 	system("cls");
-	*grid_x = 21;
-	*grid_y = 7;
-	*gameMod = 1;
+
+	if (*gridY == 4)
+		*gameMod = 2;
+	else
+		*gameMod = 1;
+
+	*gridX = 21;
+	*gridY = 7;
 }
 void EXITGAME()
 {
@@ -203,80 +225,80 @@ void EXITGAME()
 	system("cls");
 }
 
-void putRock(int board[][15], int grid_x, int grid_y, int* turn)
+void putRock(int gridX, int gridY, int* turn)
 {
 	if (*turn == 1) {
-		if (checkSam(board, grid_x, grid_y) >= 2 || checkJang(board, grid_x, grid_y) == 1 || checkSa(board, grid_x, grid_y) >= 2) {
-			alretKim(&grid_x, &grid_y, 1);
+		if (checkSam(gridX, gridY) >= 2 || checkJang(gridX, gridY) == 1 || checkSa(gridX, gridY) >= 2) {
+			alretKim(&gridX, &gridY, 1);
 			return;
 		}
 		printf("°€");
-		board[grid_y][grid_x / 3] = 1;
-		
+		board[gridY][gridX / 3] = 3;
+
 		(*turn)++;
 	}
 	else {
 		printf("°‹");
-		board[grid_y][grid_x / 3] = 2;
+		board[gridY][gridX / 3] = 2;
 
 		(*turn)--;
 	}
 }
-int checkRes(int board[][15], int grid_x, int grid_y)
+int checkRes(int gridX, int gridY)
 {
 	int res = 1;
-	
-	if (1 == board[grid_y][grid_x / 3] * board[grid_y][grid_x / 3 + 1] * board[grid_y][grid_x / 3 + 2] * board[grid_y][grid_x / 3 + 3] * board[grid_y][grid_x / 3 + 4] ||
-		1 == board[grid_y][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y][grid_x / 3 + 1] * board[grid_y][grid_x / 3 + 2] * board[grid_y][grid_x / 3 + 3] || 
-		1 == board[grid_y][grid_x / 3 - 2] * board[grid_y][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y][grid_x / 3 + 1] * board[grid_y][grid_x / 3 + 2] || 
-		1 == board[grid_y][grid_x / 3 - 3] * board[grid_y][grid_x / 3 - 2] * board[grid_y][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y][grid_x / 3 + 1] ||
-		1 == board[grid_y][grid_x / 3 - 4] * board[grid_y][grid_x / 3 - 3] * board[grid_y][grid_x / 3 - 2] * board[grid_y][grid_x / 3 - 1] * board[grid_y][grid_x / 3] ||
 
-		1 == board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3] * board[grid_y + 2][grid_x / 3] * board[grid_y + 3][grid_x / 3] * board[grid_y + 4][grid_x / 3] || 
-		1 == board[grid_y - 1][grid_x / 3] * board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3] * board[grid_y + 2][grid_x / 3] * board[grid_y + 3][grid_x / 3] ||
-		1 == board[grid_y - 2][grid_x / 3] * board[grid_y - 1][grid_x / 3] * board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3] * board[grid_y + 2][grid_x / 3] ||
-		1 == board[grid_y - 3][grid_x / 3] * board[grid_y - 2][grid_x / 3] * board[grid_y - 1][grid_x / 3] * board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3] ||
-		1 == board[grid_y - 4][grid_x / 3] * board[grid_y - 3][grid_x / 3] * board[grid_y - 2][grid_x / 3] * board[grid_y - 1][grid_x / 3] * board[grid_y][grid_x / 3] ||
+	if (243 == board[gridY][gridX / 3] * board[gridY][gridX / 3 + 1] * board[gridY][gridX / 3 + 2] * board[gridY][gridX / 3 + 3] * board[gridY][gridX / 3 + 4] ||
+		243 == board[gridY][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY][gridX / 3 + 1] * board[gridY][gridX / 3 + 2] * board[gridY][gridX / 3 + 3] ||
+		243 == board[gridY][gridX / 3 - 2] * board[gridY][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY][gridX / 3 + 1] * board[gridY][gridX / 3 + 2] ||
+		243 == board[gridY][gridX / 3 - 3] * board[gridY][gridX / 3 - 2] * board[gridY][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY][gridX / 3 + 1] ||
+		243 == board[gridY][gridX / 3 - 4] * board[gridY][gridX / 3 - 3] * board[gridY][gridX / 3 - 2] * board[gridY][gridX / 3 - 1] * board[gridY][gridX / 3] ||
 
-		1 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 + 1] * board[grid_y - 2][grid_x / 3 + 2] * board[grid_y - 3][grid_x / 3 + 3] * board[grid_y - 4][grid_x / 3 + 4] ||
-		1 == board[grid_y + 1][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 + 1] * board[grid_y - 2][grid_x / 3 + 2] * board[grid_y - 3][grid_x / 3 + 3] ||
-		1 == board[grid_y + 2][grid_x / 3 - 2] * board[grid_y + 1][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 + 1] * board[grid_y - 2][grid_x / 3 + 2] ||
-		1 == board[grid_y + 3][grid_x / 3 - 3] * board[grid_y + 2][grid_x / 3 - 2] * board[grid_y + 1][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 + 1] ||
-		1 == board[grid_y + 4][grid_x / 3 - 4] * board[grid_y + 3][grid_x / 3 - 3] * board[grid_y + 2][grid_x / 3 - 2] * board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3 - 1] ||
+		243 == board[gridY][gridX / 3] * board[gridY + 1][gridX / 3] * board[gridY + 2][gridX / 3] * board[gridY + 3][gridX / 3] * board[gridY + 4][gridX / 3] ||
+		243 == board[gridY - 1][gridX / 3] * board[gridY][gridX / 3] * board[gridY + 1][gridX / 3] * board[gridY + 2][gridX / 3] * board[gridY + 3][gridX / 3] ||
+		243 == board[gridY - 2][gridX / 3] * board[gridY - 1][gridX / 3] * board[gridY][gridX / 3] * board[gridY + 1][gridX / 3] * board[gridY + 2][gridX / 3] ||
+		243 == board[gridY - 3][gridX / 3] * board[gridY - 2][gridX / 3] * board[gridY - 1][gridX / 3] * board[gridY][gridX / 3] * board[gridY + 1][gridX / 3] ||
+		243 == board[gridY - 4][gridX / 3] * board[gridY - 3][gridX / 3] * board[gridY - 2][gridX / 3] * board[gridY - 1][gridX / 3] * board[gridY][gridX / 3] ||
 
-		1 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 - 1] * board[grid_y - 2][grid_x / 3 - 2] * board[grid_y - 3][grid_x / 3 - 3] * board[grid_y - 4][grid_x / 3 - 4] ||
-		1 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 - 1] * board[grid_y - 2][grid_x / 3 - 2] * board[grid_y - 3][grid_x / 3 - 3] * board[grid_y + 1][grid_x / 3 + 1] ||
-		1 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 - 1] * board[grid_y - 2][grid_x / 3 - 2] * board[grid_y + 2][grid_x / 3 + 2] * board[grid_y + 1][grid_x / 3 + 1] ||
-		1 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 - 1] * board[grid_y + 3][grid_x / 3 + 3] * board[grid_y + 2][grid_x / 3 + 2] * board[grid_y + 1][grid_x / 3 + 1] ||
-		1 == board[grid_y][grid_x / 3] * board[grid_y + 4][grid_x / 3 + 4] * board[grid_y + 3][grid_x / 3 + 3] * board[grid_y + 2][grid_x / 3 + 2] * board[grid_y + 1][grid_x / 3 + 1]) {
-		
-		printRes(1);
-		return 1;
+		243 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 + 1] * board[gridY - 2][gridX / 3 + 2] * board[gridY - 3][gridX / 3 + 3] * board[gridY - 4][gridX / 3 + 4] ||
+		243 == board[gridY + 1][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 + 1] * board[gridY - 2][gridX / 3 + 2] * board[gridY - 3][gridX / 3 + 3] ||
+		243 == board[gridY + 2][gridX / 3 - 2] * board[gridY + 1][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 + 1] * board[gridY - 2][gridX / 3 + 2] ||
+		243 == board[gridY + 3][gridX / 3 - 3] * board[gridY + 2][gridX / 3 - 2] * board[gridY + 1][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 + 1] ||
+		243 == board[gridY + 4][gridX / 3 - 4] * board[gridY + 3][gridX / 3 - 3] * board[gridY + 2][gridX / 3 - 2] * board[gridY][gridX / 3] * board[gridY + 1][gridX / 3 - 1] ||
+
+		243 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 - 1] * board[gridY - 2][gridX / 3 - 2] * board[gridY - 3][gridX / 3 - 3] * board[gridY - 4][gridX / 3 - 4] ||
+		243 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 - 1] * board[gridY - 2][gridX / 3 - 2] * board[gridY - 3][gridX / 3 - 3] * board[gridY + 1][gridX / 3 + 1] ||
+		243 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 - 1] * board[gridY - 2][gridX / 3 - 2] * board[gridY + 2][gridX / 3 + 2] * board[gridY + 1][gridX / 3 + 1] ||
+		243 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 - 1] * board[gridY + 3][gridX / 3 + 3] * board[gridY + 2][gridX / 3 + 2] * board[gridY + 1][gridX / 3 + 1] ||
+		243 == board[gridY][gridX / 3] * board[gridY + 4][gridX / 3 + 4] * board[gridY + 3][gridX / 3 + 3] * board[gridY + 2][gridX / 3 + 2] * board[gridY + 1][gridX / 3 + 1]) {
+
+		printRes(243);
+		return 243;
 	}
-	else if (32 == board[grid_y][grid_x / 3] * board[grid_y][grid_x / 3 + 1] * board[grid_y][grid_x / 3 + 2] * board[grid_y][grid_x / 3 + 3] * board[grid_y][grid_x / 3 + 4] ||
-		32 == board[grid_y][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y][grid_x / 3 + 1] * board[grid_y][grid_x / 3 + 2] * board[grid_y][grid_x / 3 + 3] ||
-		32 == board[grid_y][grid_x / 3 - 2] * board[grid_y][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y][grid_x / 3 + 1] * board[grid_y][grid_x / 3 + 2] ||
-		32 == board[grid_y][grid_x / 3 - 3] * board[grid_y][grid_x / 3 - 2] * board[grid_y][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y][grid_x / 3 + 1] ||
-		32 == board[grid_y][grid_x / 3 - 4] * board[grid_y][grid_x / 3 - 3] * board[grid_y][grid_x / 3 - 2] * board[grid_y][grid_x / 3 - 1] * board[grid_y][grid_x / 3] ||
+	else if (32 == board[gridY][gridX / 3] * board[gridY][gridX / 3 + 1] * board[gridY][gridX / 3 + 2] * board[gridY][gridX / 3 + 3] * board[gridY][gridX / 3 + 4] ||
+		32 == board[gridY][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY][gridX / 3 + 1] * board[gridY][gridX / 3 + 2] * board[gridY][gridX / 3 + 3] ||
+		32 == board[gridY][gridX / 3 - 2] * board[gridY][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY][gridX / 3 + 1] * board[gridY][gridX / 3 + 2] ||
+		32 == board[gridY][gridX / 3 - 3] * board[gridY][gridX / 3 - 2] * board[gridY][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY][gridX / 3 + 1] ||
+		32 == board[gridY][gridX / 3 - 4] * board[gridY][gridX / 3 - 3] * board[gridY][gridX / 3 - 2] * board[gridY][gridX / 3 - 1] * board[gridY][gridX / 3] ||
 
-		32 == board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3] * board[grid_y + 2][grid_x / 3] * board[grid_y + 3][grid_x / 3] * board[grid_y + 4][grid_x / 3] ||
-		32 == board[grid_y - 1][grid_x / 3] * board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3] * board[grid_y + 2][grid_x / 3] * board[grid_y + 3][grid_x / 3] ||
-		32 == board[grid_y - 2][grid_x / 3] * board[grid_y - 1][grid_x / 3] * board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3] * board[grid_y + 2][grid_x / 3] ||
-		32 == board[grid_y - 3][grid_x / 3] * board[grid_y - 2][grid_x / 3] * board[grid_y - 1][grid_x / 3] * board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3] ||
-		32 == board[grid_y - 4][grid_x / 3] * board[grid_y - 3][grid_x / 3] * board[grid_y - 2][grid_x / 3] * board[grid_y - 1][grid_x / 3] * board[grid_y][grid_x / 3] ||
+		32 == board[gridY][gridX / 3] * board[gridY + 1][gridX / 3] * board[gridY + 2][gridX / 3] * board[gridY + 3][gridX / 3] * board[gridY + 4][gridX / 3] ||
+		32 == board[gridY - 1][gridX / 3] * board[gridY][gridX / 3] * board[gridY + 1][gridX / 3] * board[gridY + 2][gridX / 3] * board[gridY + 3][gridX / 3] ||
+		32 == board[gridY - 2][gridX / 3] * board[gridY - 1][gridX / 3] * board[gridY][gridX / 3] * board[gridY + 1][gridX / 3] * board[gridY + 2][gridX / 3] ||
+		32 == board[gridY - 3][gridX / 3] * board[gridY - 2][gridX / 3] * board[gridY - 1][gridX / 3] * board[gridY][gridX / 3] * board[gridY + 1][gridX / 3] ||
+		32 == board[gridY - 4][gridX / 3] * board[gridY - 3][gridX / 3] * board[gridY - 2][gridX / 3] * board[gridY - 1][gridX / 3] * board[gridY][gridX / 3] ||
 
-		32 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 + 1] * board[grid_y - 2][grid_x / 3 + 2] * board[grid_y - 3][grid_x / 3 + 3] * board[grid_y - 4][grid_x / 3 + 4] ||
-		32 == board[grid_y + 1][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 + 1] * board[grid_y - 2][grid_x / 3 + 2] * board[grid_y - 3][grid_x / 3 + 3] ||
-		32 == board[grid_y + 2][grid_x / 3 - 2] * board[grid_y + 1][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 + 1] * board[grid_y - 2][grid_x / 3 + 2] ||
-		32 == board[grid_y + 3][grid_x / 3 - 3] * board[grid_y + 2][grid_x / 3 - 2] * board[grid_y + 1][grid_x / 3 - 1] * board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 + 1] ||
-		32 == board[grid_y + 4][grid_x / 3 - 4] * board[grid_y + 3][grid_x / 3 - 3] * board[grid_y + 2][grid_x / 3 - 2] * board[grid_y][grid_x / 3] * board[grid_y + 1][grid_x / 3 - 1] ||
+		32 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 + 1] * board[gridY - 2][gridX / 3 + 2] * board[gridY - 3][gridX / 3 + 3] * board[gridY - 4][gridX / 3 + 4] ||
+		32 == board[gridY + 1][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 + 1] * board[gridY - 2][gridX / 3 + 2] * board[gridY - 3][gridX / 3 + 3] ||
+		32 == board[gridY + 2][gridX / 3 - 2] * board[gridY + 1][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 + 1] * board[gridY - 2][gridX / 3 + 2] ||
+		32 == board[gridY + 3][gridX / 3 - 3] * board[gridY + 2][gridX / 3 - 2] * board[gridY + 1][gridX / 3 - 1] * board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 + 1] ||
+		32 == board[gridY + 4][gridX / 3 - 4] * board[gridY + 3][gridX / 3 - 3] * board[gridY + 2][gridX / 3 - 2] * board[gridY][gridX / 3] * board[gridY + 1][gridX / 3 - 1] ||
 
-		32 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 - 1] * board[grid_y - 2][grid_x / 3 - 2] * board[grid_y - 3][grid_x / 3 - 3] * board[grid_y - 4][grid_x / 3 - 4] ||
-		32 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 - 1] * board[grid_y - 2][grid_x / 3 - 2] * board[grid_y - 3][grid_x / 3 - 3] * board[grid_y + 1][grid_x / 3 + 1] ||
-		32 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 - 1] * board[grid_y - 2][grid_x / 3 - 2] * board[grid_y + 2][grid_x / 3 + 2] * board[grid_y + 1][grid_x / 3 + 1] ||
-		32 == board[grid_y][grid_x / 3] * board[grid_y - 1][grid_x / 3 - 1] * board[grid_y + 3][grid_x / 3 + 3] * board[grid_y + 2][grid_x / 3 + 2] * board[grid_y + 1][grid_x / 3 + 1] ||
-		32 == board[grid_y][grid_x / 3] * board[grid_y + 4][grid_x / 3 + 4] * board[grid_y + 3][grid_x / 3 + 3] * board[grid_y + 2][grid_x / 3 + 2] * board[grid_y + 1][grid_x / 3 + 1]) {
-		
+		32 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 - 1] * board[gridY - 2][gridX / 3 - 2] * board[gridY - 3][gridX / 3 - 3] * board[gridY - 4][gridX / 3 - 4] ||
+		32 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 - 1] * board[gridY - 2][gridX / 3 - 2] * board[gridY - 3][gridX / 3 - 3] * board[gridY + 1][gridX / 3 + 1] ||
+		32 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 - 1] * board[gridY - 2][gridX / 3 - 2] * board[gridY + 2][gridX / 3 + 2] * board[gridY + 1][gridX / 3 + 1] ||
+		32 == board[gridY][gridX / 3] * board[gridY - 1][gridX / 3 - 1] * board[gridY + 3][gridX / 3 + 3] * board[gridY + 2][gridX / 3 + 2] * board[gridY + 1][gridX / 3 + 1] ||
+		32 == board[gridY][gridX / 3] * board[gridY + 4][gridX / 3 + 4] * board[gridY + 3][gridX / 3 + 3] * board[gridY + 2][gridX / 3 + 2] * board[gridY + 1][gridX / 3 + 1]) {
+
 		printRes(32);
 		return 32;
 	}
@@ -285,10 +307,12 @@ int checkRes(int board[][15], int grid_x, int grid_y)
 void printRes(int res)
 {
 	gotoXY_g(50, 8);
-	if (res == 1) 
+	if (res == 243)
 		printf("Black Win!!\n");
 	else
 		printf("White Win!!\n");
 
 	Sleep(1000);
 }
+
+
